@@ -50,6 +50,8 @@ class TransformerBaseParams(object):
   beam_size = 4
   alpha = 0.6  # used to calculate length normalization in beam search
 
+  use_tpu = False
+
 
 class TransformerBigParams(TransformerBaseParams):
   """Parameters for the big Transformer model."""

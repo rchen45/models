@@ -67,6 +67,14 @@ _MIN_BOUNDARY = 8
 _BOUNDARY_SCALE = 1.1
 
 
+NUM_EXAMPLES = {
+    tf.estimator.ModeKeys.TRAIN: 2399123 +  # news-commentary-v12.de-en
+                                 1920209 +  # commoncrawl.de-en
+                                 270769,    # europarl-v7.de-en
+    tf.estimator.ModeKeys.EVAL: 1,  # newstest2013
+}
+
+
 def _load_records(filename):
   """Read file and return a dataset of tf.Examples."""
   return tf.data.TFRecordDataset(filename, buffer_size=_READ_RECORD_BUFFER)
@@ -232,6 +240,24 @@ def _read_and_batch_from_files(
   # Prefetch the next element to improve speed of input pipeline.
   dataset = dataset.prefetch(1)
   return dataset
+
+
+def epochs_to_steps(num_epochs, batch_size, mode):
+  """Converts a number of epochs to a number of training steps.
+
+    TPU can not tolerate an OutOfRange error from a dataset. As a result the
+  number of examples to be processed must be known ahead of time. TPUs also
+  do not allow partial batches, so this function rounds down.
+
+  Args:
+    num_epochs: An integer of the number of epochs to convert to steps.
+    batch_size: The mini-batch size used.
+    mode: The estimator ModeKey of the computation
+
+  Returns:
+    An integer of the number of equivalent steps rounded down.
+  """
+  return NUM_EXAMPLES[mode] * num_epochs // batch_size
 
 
 def train_input_fn(params):
