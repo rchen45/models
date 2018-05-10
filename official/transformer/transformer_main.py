@@ -76,7 +76,7 @@ def model_fn(features, labels, mode, params):
     # When in prediction mode, the labels/targets is None. The model output
     # is the prediction
     if mode == tf.estimator.ModeKeys.PREDICT:
-      if params.use_tpu:
+      if params["use_tpu"]:
         raise NotImplementedError("prediction is not yet supported.")
       return tf.estimator.EstimatorSpec(
           tf.estimator.ModeKeys.PREDICT,
@@ -86,14 +86,14 @@ def model_fn(features, labels, mode, params):
 
     # Calculate model loss.
     xentropy, weights = metrics.padded_cross_entropy_loss(
-        logits, targets, params.label_smoothing, params.vocab_size)
+        logits, targets, params["label_smoothing"], params["vocab_size"])
     loss = tf.reduce_sum(xentropy * weights) / tf.reduce_sum(weights)
 
     # Save loss as named tensor that will be logged with the logging hook.
     tf.identity(loss, "cross_entropy")
 
     if mode == tf.estimator.ModeKeys.EVAL:
-      if params.use_tpu:
+      if params["use_tpu"]:
         metric_fn = functools.partial(metrics.get_eval_metrics, params=params)
         return tf.contrib.tpu.TPUEstimatorSpec(
             mode=mode, loss=loss, predictions={"predictions": logits},
@@ -102,8 +102,8 @@ def model_fn(features, labels, mode, params):
           mode=mode, loss=loss, predictions={"predictions": logits},
           eval_metric_ops=metrics.get_eval_metrics(logits, labels, params))
     else:
-      train_op = get_train_op(loss, params, use_tpu=params.use_tpu)
-      if params.use_tpu:
+      train_op = get_train_op(loss, params, use_tpu=params["use_tpu"])
+      if params["use_tpu"]:
         return tf.contrib.tpu.TPUEstimatorSpec(
             mode=mode, loss=loss, train_op=train_op)
       return tf.estimator.EstimatorSpec(mode=mode, loss=loss, train_op=train_op)
@@ -135,16 +135,16 @@ def get_train_op(loss, params, use_tpu=False):
   """Generate training operation that updates variables based on loss."""
   with tf.variable_scope("get_train_op"):
     learning_rate = get_learning_rate(
-        params.learning_rate, params.hidden_size,
-        params.learning_rate_warmup_steps)
+        params["learning_rate"], params["hidden_size"],
+        params["learning_rate_warmup_steps"])
 
     # Create optimizer. Use LazyAdamOptimizer from TF contrib, which is faster
     # than the TF core Adam optimizer.
     optimizer = tf.contrib.opt.LazyAdamOptimizer(
         learning_rate,
-        beta1=params.optimizer_adam_beta1,
-        beta2=params.optimizer_adam_beta2,
-        epsilon=params.optimizer_adam_epsilon)
+        beta1=params["optimizer_adam_beta1"],
+        beta2=params["optimizer_adam_beta2"],
+        epsilon=params["optimizer_adam_epsilon"])
 
     if use_tpu:
       optimizer = tf.contrib.tpu.CrossShardOptimizer(optimizer)
@@ -396,9 +396,10 @@ def define_transformer_flags():
 
 
 def construct_estimator(flags_obj, params, schedule_manager):
-  if not params.use_tpu:
+  param_dict = vars(params)
+  if not param_dict["use_tpu"]:
     return tf.estimator.Estimator(
-        model_fn=model_fn, model_dir=flags_obj.model_dir, params=params)
+        model_fn=model_fn, model_dir=flags_obj.model_dir, params=param_dict)
 
   tpu_cluster_resolver = tf.contrib.cluster_resolver.TPUClusterResolver(
       tpu=flags_obj.tpu,
@@ -419,10 +420,12 @@ def construct_estimator(flags_obj, params, schedule_manager):
 
   return tf.contrib.tpu.TPUEstimator(
       model_fn=model_fn,
-      use_tpu=params.use_tpu,
-      train_batch_size=params.batch_size,
-      eval_batch_size=params.batch_size,
-      params=params,
+      use_tpu=param_dict["use_tpu"],
+      train_batch_size=param_dict["batch_size"],
+      eval_batch_size=param_dict["batch_size"],
+      params={
+        # TPUEstimator needs to populate batch_size itself due to sharding.
+        key: value for key, value in param_dict.items() if key != "batch_size"},
       config=run_config)
 
 
@@ -446,7 +449,8 @@ def run_transformer(flags_obj):
       train_epochs=flags_obj.train_epochs,
       epochs_between_evals=flags_obj.epochs_between_evals,
       default_train_epochs=DEFAULT_TRAIN_EPOCHS,
-      batch_size=params.batch_size
+      batch_size=params.batch_size,
+      use_tpu=params.use_tpu
   )
 
   # Create hooks that log information about the training and metric values
