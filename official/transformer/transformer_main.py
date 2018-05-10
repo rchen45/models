@@ -396,7 +396,6 @@ def define_transformer_flags():
 
 
 def construct_estimator(flags_obj, params, schedule_manager):
-  param_dict = vars(params)
   if not param_dict["use_tpu"]:
     return tf.estimator.Estimator(
         model_fn=model_fn, model_dir=flags_obj.model_dir, params=param_dict)
@@ -437,11 +436,11 @@ def run_transformer(flags_obj):
   """
 
   # Add flag-defined parameters to params object
-  params = PARAMS_MAP[flags_obj.params]()
-  params.data_dir = flags_obj.data_dir
-  params.num_parallel_calls = flags_obj.num_parallel_calls
-  params.batch_size = flags_obj.batch_size or params.batch_size
-  params.use_tpu = bool(flags_obj.tpu)  # was a tpu specified.
+  params = vars(PARAMS_MAP[flags_obj.params])
+  params["data_dir"] = flags_obj.data_dir
+  params["num_parallel_calls"] = flags_obj.num_parallel_calls
+  params["batch_size"] = flags_obj.batch_size or params["batch_size"]
+  params["use_tpu"] = bool(flags_obj.tpu)  # was a tpu specified.
 
   schedule_manager = schedule.Manager(
       train_steps=flags_obj.train_steps,
@@ -449,21 +448,21 @@ def run_transformer(flags_obj):
       train_epochs=flags_obj.train_epochs,
       epochs_between_evals=flags_obj.epochs_between_evals,
       default_train_epochs=DEFAULT_TRAIN_EPOCHS,
-      batch_size=params.batch_size,
-      use_tpu=params.use_tpu
+      batch_size=params["batch_size"],
+      use_tpu=params["use_tpu"]
   )
 
   # Create hooks that log information about the training and metric values
   train_hooks = hooks_helper.get_train_hooks(
       flags_obj.hooks,
       tensors_to_log=TENSORS_TO_LOG,  # used for logging hooks
-      batch_size=params.batch_size  # for ExamplesPerSecondHook
+      batch_size=params["batch_size"]  # for ExamplesPerSecondHook
   )
   benchmark_logger = logger.config_benchmark_logger(flags_obj.benchmark_log_dir)
   benchmark_logger.log_run_info(
       model_name="transformer",
       dataset_name="wmt_translate_ende",
-      run_params=params.__dict__)
+      run_params=params)
 
   # Train and evaluate transformer model
   estimator = construct_estimator(flags_obj, params, schedule_manager)
