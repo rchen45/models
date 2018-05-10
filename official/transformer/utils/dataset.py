@@ -260,18 +260,18 @@ def epochs_to_steps(num_epochs, batch_size, mode):
   return NUM_EXAMPLES[mode] * num_epochs // batch_size
 
 
-def train_input_fn(param_dict):
+def train_input_fn(params):
   """Load and return dataset of batched examples for use during training."""
-  file_pattern = os.path.join(param_dict.get("data_dir", ""), "*train*")
+  file_pattern = os.path.join(params.get("data_dir", ""), "*train*")
   return _read_and_batch_from_files(
-      file_pattern, param_dict["batch_size"], param_dict["max_length"],
-      param_dict["num_parallel_calls"], shuffle=True,
-      repeat=param_dict["repeat_dataset"])
+      file_pattern, params["batch_size"], params["max_length"],
+      params["num_parallel_calls"], shuffle=True,
+      repeat=params["repeat_dataset"])
 
 
-def eval_input_fn(param_dict):
+def eval_input_fn(params):
   """Load and return dataset of batched examples for use during evaluation."""
-  file_pattern = os.path.join(param_dict.get("data_dir", ""), "*dev*")
+  file_pattern = os.path.join(params.get("data_dir", ""), "*dev*")
   return _read_and_batch_from_files(
-      file_pattern, param_dict["batch_size"], param_dict["max_length"],
-      param_dict["num_parallel_calls"], shuffle=False, repeat=1)
+      file_pattern, params["batch_size"], params["max_length"],
+      params["num_parallel_calls"], shuffle=False, repeat=1)

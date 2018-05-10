@@ -168,9 +168,9 @@ def main(unused_argv):
       os.path.join(FLAGS.data_dir, FLAGS.vocab_file))
 
   if FLAGS.params == "base":
-    params = vars(model_params.TransformerBaseParams())
+    params = model_params.TransformerBaseParams().create_dict()
   elif FLAGS.params == "big":
-    params = vars(model_params.TransformerBigParams())
+    params = model_params.TransformerBigParams().create_dict()
   else:
     raise ValueError("Invalid parameter set defined: %s."
                      "Expected 'base' or 'big.'" % FLAGS.params)

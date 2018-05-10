@@ -396,9 +396,9 @@ def define_transformer_flags():
 
 
 def construct_estimator(flags_obj, params, schedule_manager):
-  if not param_dict["use_tpu"]:
+  if not params["use_tpu"]:
     return tf.estimator.Estimator(
-        model_fn=model_fn, model_dir=flags_obj.model_dir, params=param_dict)
+        model_fn=model_fn, model_dir=flags_obj.model_dir, params=params)
 
   tpu_cluster_resolver = tf.contrib.cluster_resolver.TPUClusterResolver(
       tpu=flags_obj.tpu,
@@ -419,9 +419,9 @@ def construct_estimator(flags_obj, params, schedule_manager):
 
   return tf.contrib.tpu.TPUEstimator(
       model_fn=model_fn,
-      use_tpu=param_dict["use_tpu"],
-      train_batch_size=param_dict["batch_size"],
-      eval_batch_size=param_dict["batch_size"],
+      use_tpu=params["use_tpu"],
+      train_batch_size=params["batch_size"],
+      eval_batch_size=params["batch_size"],
       params={
         # TPUEstimator needs to populate batch_size itself due to sharding.
         key: value for key, value in param_dict.items() if key != "batch_size"},
@@ -436,7 +436,7 @@ def run_transformer(flags_obj):
   """
 
   # Add flag-defined parameters to params object
-  params = vars(PARAMS_MAP[flags_obj.params])
+  params = PARAMS_MAP[flags_obj.params]().create_dict()
   params["data_dir"] = flags_obj.data_dir
   params["num_parallel_calls"] = flags_obj.num_parallel_calls
   params["batch_size"] = flags_obj.batch_size or params["batch_size"]

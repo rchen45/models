@@ -52,6 +52,9 @@ class TransformerBaseParams(object):
 
   use_tpu = False
 
+  def create_dict(self):
+    return {key: value for key, value in self.__dict__.items()}
+
 
 class TransformerBigParams(TransformerBaseParams):
   """Parameters for the big Transformer model."""
